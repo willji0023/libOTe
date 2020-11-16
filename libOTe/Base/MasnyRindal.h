@@ -30,7 +30,7 @@ namespace osuCrypto
         using OtReceiver::receive;
         using OtSender::send;
 
-
+#ifdef ENABLE_BOOST
         void receive(
             const BitVector& choices,
             span<block> messages,
@@ -49,7 +49,7 @@ namespace osuCrypto
         {
             send(messages, prng, chl);
         }
-
+#endif
         //void receive(
         //    const BitVector& choices,
         //    span<block> messages,

@@ -9,6 +9,8 @@ using namespace osuCrypto;
 #include <cryptoTools/Network/IOService.h>
 #include <cryptoTools/Network/Session.h>
 
+#ifdef ENABLE_BOOST
+
 void getLatency(CLP& cmd)
 {
 	auto ip = cmd.getOr<std::string>("ip", "localhost:1212");
@@ -143,3 +145,4 @@ void recverGetLatency(Channel& chl)
     chl.asyncSend(dummy, 1);
 
 }
+#endif

@@ -12,7 +12,9 @@
 namespace osuCrypto
 {
     class PRNG;
+#ifdef ENABLE_BOOST
     class Channel;
+#endif
     class BitVector;
 
     // The hard coded number of base OT that is expected by the OT Extension implementations.
@@ -32,6 +34,20 @@ namespace osuCrypto
             span<block> messages,
             PRNG& prng) = 0;
 
+
+        // Receive chosen strings indexed by choices. The chosen strings will be written to 
+        // messages.
+        coproto::Proto receiveChosen(
+            const BitVector& choices,
+            span<block> recvMessages,
+            PRNG& prng);
+
+        coproto::Proto receiveCorrelated(
+            const BitVector& choices,
+            span<block> recvMessages,
+            PRNG& prng);
+
+#ifdef ENABLE_BOOST
         void receive(
             const BitVector& choices,
             span<block> messages,
@@ -46,12 +62,12 @@ namespace osuCrypto
             PRNG& prng,
             Channel& chl);
 
-
         void receiveCorrelated(
             const BitVector& choices,
             span<block> recvMessages,
             PRNG& prng,
             Channel& chl);
+#endif
 
     };
 
@@ -65,6 +81,20 @@ namespace osuCrypto
         virtual coproto::Proto send(
             span<std::array<block, 2>> messages,
             PRNG& prng) = 0;
+
+
+        // send chosen strings. Thosen strings are read from messages.
+        coproto::Proto sendChosen(
+            span<std::array<block, 2>> messages,
+            PRNG& prng);
+
+        coproto::Proto sendCorrelated(
+            span<block> messages, 
+            std::function<block(block, u64)> corFunc, 
+            PRNG& prng);
+        
+
+#ifdef ENABLE_BOOST
 
         void send(
             span<std::array<block, 2>> messages,
@@ -93,6 +123,7 @@ namespace osuCrypto
 
             chl.asyncSend(std::move(temp2));
         }
+#endif
 
     };
 
@@ -106,11 +137,15 @@ namespace osuCrypto
         virtual void setUniformBaseOts(
             span<std::array<block, 2>> baseSendOts) = 0;
 
+#ifdef ENABLE_BOOST
         // sets the base OTs that are then used to extend
         void setBaseOts(
             span<std::array<block,2>> baseSendOts,
             PRNG& prng,
             Channel& chl);
+
+        void genBaseOts(PRNG& prng, Channel& chl);
+#endif
         
         virtual coproto::Proto setBaseOts(
             span<std::array<block, 2>> baseSendOts,
@@ -127,9 +162,6 @@ namespace osuCrypto
 
         // use the default base OT class to generate the
         // base OTs that are required.
-        void genBaseOts(PRNG& prng, Channel& chl);
-
-
         virtual coproto::Proto genBaseOts(PRNG& prng);
     };
 
@@ -149,11 +181,6 @@ namespace osuCrypto
             const BitVector& choices) = 0;
 
         // sets the base OTs that are then used to extend
-        void setBaseOts(
-            span<block> baseRecvOts,
-            const BitVector& choices,
-            Channel& chl);
-
         virtual coproto::Proto setBaseOts(
             span<block> baseRecvOts,
             const BitVector& choices);
@@ -163,9 +190,16 @@ namespace osuCrypto
 
         // use the default base OT class to generate the
         // base OTs that are required.
-        void genBaseOts(PRNG& prng, Channel& chl);
-
         virtual coproto::Proto genBaseOts(PRNG& prng);
+
+#ifdef ENABLE_BOOST
+        void setBaseOts(
+            span<block> baseRecvOts,
+            const BitVector& choices,
+            Channel& chl);
+
+        void genBaseOts(PRNG& prng, Channel& chl);
+#endif
 
     };
 

@@ -484,11 +484,12 @@ throw UnitTestSkipped("ENALBE_KKRT is not defined.");
     void NcoOt_genBaseOts_Test()
     {
 #if defined(LIBOTE_HAS_BASE_OT) && defined(ENABLE_OOS)
-        IOService ios(0);
-        Session ep0(ios, "127.0.0.1", 1212, SessionMode::Server);
-        Session ep1(ios, "127.0.0.1", 1212, SessionMode::Client);
-        Channel senderChannel = ep1.addChannel();
-        Channel recvChannel = ep0.addChannel();
+
+        //IOService ios(0);
+        //Session ep0(ios, "127.0.0.1", 1212, SessionMode::Server);
+        //Session ep1(ios, "127.0.0.1", 1212, SessionMode::Client);
+        //Channel senderChannel = ep1.addChannel();
+        //Channel recvChannel = ep0.addChannel();
 
         OosNcoOtSender sender;
         OosNcoOtReceiver recv;
@@ -496,14 +497,17 @@ throw UnitTestSkipped("ENALBE_KKRT is not defined.");
         sender.configure(true, 40, inputSize);
         recv.configure(true, 40, inputSize);
 
-        auto thrd = std::thread([&]() {
-            PRNG prng(ZeroBlock);
-            recv.genBaseOts(prng, recvChannel);
-        });
+        PRNG prng0(ZeroBlock);
+        PRNG prng1(OneBlock);
 
-        PRNG prng(OneBlock);
-        sender.genBaseOts(prng, senderChannel);
-        thrd.join();
+        auto p0 = recv.genBaseOts(prng0);
+        auto p1 = sender.genBaseOts(prng1);
+
+        coproto::LocalEvaluator eval;
+        auto ec = eval.execute(p0, p1);
+        if (ec)
+            throw std::runtime_error(ec.message());
+
 
         for (u64 i = 0; i < sender.mGens.size(); ++i)
         {

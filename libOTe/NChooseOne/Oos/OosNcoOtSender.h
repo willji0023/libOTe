@@ -134,11 +134,14 @@ namespace osuCrypto {
         // @ recvCount: the number of correction values that should be received.
         coproto::Proto recvCorrection(u64 recvCount) override final;
 
+
+#ifdef ENABLE_BOOST
         void recvCorrection(Channel& chl, u64 recvCount) override final;
 
         // An alternative version of the recvCorrection(...) function which dynamically receivers the number of 
         // corrections based on how many were sent. The return value is the number received. See overload for details.
         u64 recvCorrection(Channel& chl) override;
+#endif
 
         // Some malicious secure OT extensions require an additional step after all corrections have 
         // been received. In this case, this method should be called.
@@ -158,8 +161,9 @@ namespace osuCrypto {
         OosNcoOtSender splitBase();
 
         // special functions below which might not have a stable API.
-
+#ifdef ENABLE_BOOST
         std::future<void> asyncRecvCorrection(Channel& chl, u64 recvCount);
+#endif
 
         coproto::Proto recvFinalization();
 

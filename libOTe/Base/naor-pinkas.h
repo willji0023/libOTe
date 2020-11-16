@@ -19,31 +19,35 @@ namespace osuCrypto
     class NaorPinkas : public OtReceiver, public OtSender
     {
     public:
-        using OtReceiver::receive;
-        using OtSender::send;
 
-        void receive(
-            const BitVector& choices, 
-            span<block> messages,
-            PRNG& prng, 
-            Channel& chl, 
-            u64 numThreads);
 
         coproto::Proto receive(
             const BitVector& choices,
             span<block> messages,
             PRNG& prng) override;
 
-        void send(
-            span<std::array<block, 2>> messages,
-            PRNG& prng,
-            Channel& sock,
-            u64 numThreads);
 
         coproto::Proto send(
             span<std::array<block, 2>> messages,
             PRNG& prng) override;
 
+#ifdef ENABLE_BOOST
+        using OtReceiver::receive;
+        using OtSender::send;
+
+        void receive(
+            const BitVector& choices,
+            span<block> messages,
+            PRNG& prng,
+            Channel& chl,
+            u64 numThreads);
+
+        void send(
+            span<std::array<block, 2>> messages,
+            PRNG& prng,
+            Channel& sock,
+            u64 numThreads);
+#endif
         //void receive(
         //    const BitVector& choices,
         //    span<block> messages,

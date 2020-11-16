@@ -5,14 +5,18 @@
 
 #include <cryptoTools/Common/CLP.h>
 #include <cryptoTools/Network/Channel.h>
+
+#ifdef ENABLE_BOOST
 void senderGetLatency(osuCrypto::Channel& chl);
 
 void recverGetLatency(osuCrypto::Channel& chl);
 void getLatency(osuCrypto::CLP& cmd);
+
+void sync(osuCrypto::Channel& chl, Role role);
+#endif
 
 enum class Role
 {
 	Sender,
 	Receiver
 };
-void sync(osuCrypto::Channel& chl, Role role);

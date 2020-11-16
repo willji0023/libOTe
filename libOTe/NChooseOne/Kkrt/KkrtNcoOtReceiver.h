@@ -39,9 +39,11 @@ namespace osuCrypto
 
         MultiKeyAES<4> mMultiKeyAES;
 
-
+#ifdef ENABLE_BOOST
         bool mHasPendingSendFuture = false;
         std::future<void> mPendingSendFuture;
+
+#endif
 
         KkrtNcoOtReceiver() = default;
         KkrtNcoOtReceiver(const KkrtNcoOtReceiver&) = delete;
@@ -52,8 +54,10 @@ namespace osuCrypto
 
         ~KkrtNcoOtReceiver()
         {
+#ifdef ENABLE_BOOST
             if (mHasPendingSendFuture)
-                mPendingSendFuture.get();
+                mPendingSendFuture.get()
+#endif;
         }
 
 
@@ -66,9 +70,11 @@ namespace osuCrypto
             mCorrectionIdx = v.mCorrectionIdx;
             mInputByteCount = v.mInputByteCount;
             mMultiKeyAES = std::move(v.mMultiKeyAES);
+#ifdef ENABLE_BOOST
             mHasPendingSendFuture = v.mHasPendingSendFuture;
             mPendingSendFuture = std::move(v.mPendingSendFuture);
             v.mHasPendingSendFuture = false;
+#endif
         }
 
         bool isMalicious() const override { return false; }
@@ -140,8 +146,9 @@ namespace osuCrypto
         // @ sendCount: the number of correction values that should be sent.
         coproto::Proto sendCorrection(u64 sendCount) override final;
 
-
+#ifdef ENABLE_BOOST
         void sendCorrection(Channel& chl, u64 sendCount) override final;
+#endif
 
         // Some malicious secure OT extensions require an additional step after all corrections have 
         // been sent. In this case, this method should be called.

@@ -413,7 +413,7 @@ namespace osuCrypto
                 }
 
                 ot.setTimePoint("Kos.send.checkSummed");
-
+                 
 
                 //std::cout << IoStream::unlock;
 

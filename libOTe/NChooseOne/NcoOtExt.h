@@ -12,7 +12,9 @@
 namespace osuCrypto
 {
     class PRNG;
+#ifdef ENABLE_BOOST
     class Channel;
+#endif
     class BitVector;
     //static const u64 NcoOtExtDefaultDestSize(sizeof(block));
 
@@ -52,7 +54,9 @@ namespace osuCrypto
         virtual bool isMalicious() const = 0;
 
 
+#ifdef ENABLE_BOOST
         void genBaseOts(PRNG& prng, Channel& chl);
+#endif
 
         coproto::Proto genBaseOts(PRNG& prng);
 
@@ -68,12 +72,7 @@ namespace osuCrypto
         coproto::Proto setBaseOts(
             span<block> baseRecvOts,
             const BitVector& choices);
-
-        void setBaseOts(
-            span<block> baseRecvOts,
-            const BitVector& choices,
-            Channel& chl);
-        
+               
 
         // Performs the PRNG expantion and transpose operations. This sets the 
         // internal data structures that are needed for the subsequent encode(..)
@@ -83,7 +82,6 @@ namespace osuCrypto
         //      should be called again.
         virtual coproto::Proto init(u64 numOtExt, PRNG& prng) = 0;
 
-        void init(u64 numOtExt, PRNG& prng, Channel& chl);
 
         // This function allows the user to obtain the random OT messages of their choice
         // at a given index. 
@@ -125,11 +123,6 @@ namespace osuCrypto
         // @ recvCount: the number of correction values that should be received.
         virtual coproto::Proto recvCorrection(u64 recvCount) = 0;
 
-        virtual void recvCorrection(Channel& chl, u64 recvCount) = 0;
-
-        // An alternative version of the recvCorrection(...) function which dynamically receivers the number of 
-        // corrections based on how many were sent. The return value is the number received. See overload for details.
-        virtual u64 recvCorrection(Channel& chl) = 0;
 
 
         // Some malicious secure OT extensions require an additional step after all corrections have 
@@ -137,9 +130,6 @@ namespace osuCrypto
         // @ chl: the channel that will be used to communicate
         // @ seed: a random seed that will be used in the function
         virtual coproto::Proto check(block seed) = 0;
-
-        void check(Channel& chl, block seed);
-
 
         // Creates a new OT extesion of the same type that can be used
         // in parallel to the original. Each will be independent and can
@@ -154,7 +144,25 @@ namespace osuCrypto
         coproto::Proto sendChosen(MatrixView<block> messages, PRNG& prng);
 
 
+
+#ifdef ENABLE_BOOST
+        virtual void recvCorrection(Channel& chl, u64 recvCount) = 0;
+
+        // An alternative version of the recvCorrection(...) function which dynamically receivers the number of 
+        // corrections based on how many were sent. The return value is the number received. See overload for details.
+        virtual u64 recvCorrection(Channel& chl) = 0;
+
+        void check(Channel& chl, block seed);
+
+        void setBaseOts(
+            span<block> baseRecvOts,
+            const BitVector& choices,
+            Channel& chl);
+
+        void init(u64 numOtExt, PRNG& prng, Channel& chl);
+
         void sendChosen(MatrixView<block> messages, PRNG& prng, Channel& chl);
+#endif
     };
 
 
@@ -192,7 +200,6 @@ namespace osuCrypto
         virtual bool isMalicious() const = 0;
 
 
-        void genBaseOts(PRNG& prng, Channel& chl);
 
         coproto::Proto genBaseOts(PRNG& prng);
 
@@ -205,9 +212,6 @@ namespace osuCrypto
         coproto::Proto setBaseOts(
             span<std::array<block, 2>> baseOts, PRNG& prng);
 
-        void setBaseOts(
-            span<std::array<block, 2>> baseOts, PRNG& prng,
-            Channel& chl);
 
         // Warning, can be unsafe to directly used in the malicious setting. use setBaseOts() instread.
         // Sets the base OTs. Note that getBaseOTCount() of OTs should be provided.
@@ -224,7 +228,6 @@ namespace osuCrypto
         // @ Channel: the channel that should be used to communicate with the sender.
         virtual coproto::Proto init(u64 numOtExt, PRNG& prng) = 0;
 
-        void init(u64 numOtExt, PRNG& prng, Channel& chl);
 
         // For the OT at index otIdx, this call compute the OT with 
         // choice value inputWord. 
@@ -261,7 +264,6 @@ namespace osuCrypto
         // @ sendCount: the number of correction values that should be sent.
         virtual coproto::Proto sendCorrection(u64 sendCount) = 0;
 
-        virtual void sendCorrection(Channel& chl, u64 sendCount) = 0;
 
         // Some malicious secure OT extensions require an additional step after all corrections have 
         // been sent. In this case, this method should be called.
@@ -269,7 +271,6 @@ namespace osuCrypto
         // @ seed: a random seed that will be used in the function
         virtual coproto::Proto check(block seed) = 0;
 
-        void check(Channel& chl, block seed);
 
         // Allows a single NcoOtExtReceiver to be split into two, with each being 
         // independent of each other.
@@ -283,7 +284,22 @@ namespace osuCrypto
         // @ chl: the socket that should be communicated over.
         coproto::Proto receiveChosen(u64 numMsgsPerOT, span<block> messages, span<u64> choices, PRNG& prng);
 
+
+#ifdef ENABLE_BOOST
+        void genBaseOts(PRNG& prng, Channel& chl);
+
+        void setBaseOts(
+            span<std::array<block, 2>> baseOts, PRNG& prng,
+            Channel& chl);
+
+        void init(u64 numOtExt, PRNG& prng, Channel& chl);
+
+        virtual void sendCorrection(Channel& chl, u64 sendCount) = 0;
+
+        void check(Channel& chl, block seed);
+
         void receiveChosen(u64 numMsgsPerOT, span<block> messages, span<u64> choices, PRNG& prng, Channel& chl);
+#endif
     };
 
 }

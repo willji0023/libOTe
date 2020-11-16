@@ -325,6 +325,7 @@ namespace osuCrypto
         mGens.resize(roundUpTo(mCode.codewordBitSize(), 128));
     }
 
+#ifdef ENABLE_BOOST
     std::future<void> OosNcoOtSender::asyncRecvCorrection(Channel & chl, u64 recvCount)
     {
         // receive the next OT correction values. This will be several rows of the form u = T0 + T1 + C(w)
@@ -381,6 +382,8 @@ namespace osuCrypto
 
         return numCorrections;
     }
+
+#endif
 
 
     coproto::Proto OosNcoOtSender::recvCorrection(u64 recvCount)

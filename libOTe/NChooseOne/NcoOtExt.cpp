@@ -13,7 +13,7 @@
 #include "libOTe/Tools/CoprotoSock.h"
 
 
-
+#ifdef ENABLE_BOOST
 
 void osuCrypto::NcoOtExtReceiver::genBaseOts(PRNG & prng, Channel & chl)
 {
@@ -48,6 +48,54 @@ void osuCrypto::NcoOtExtReceiver::init(u64 numOtExt, PRNG& prng, Channel& chl)
     if (ec)
         throw std::runtime_error("NcoOtExtReceiver::init(), " + ec.message());
 }
+
+
+void osuCrypto::NcoOtExtSender::setBaseOts(span<block> baseRecvOts, const BitVector& choices, Channel& chl)
+{
+    CoprotoSock s(chl);
+    auto ec = setBaseOts(baseRecvOts, choices).evaluate(s);
+    if (ec)
+        throw std::runtime_error("NcoOtExtSender::setBaseOts(), " + ec.message());
+}
+
+void osuCrypto::NcoOtExtSender::init(u64 numOtExt, PRNG& prng, Channel& chl)
+{
+    CoprotoSock s(chl);
+    auto ec = init(numOtExt, prng).evaluate(s);
+    if (ec)
+        throw std::runtime_error("NcoOtExtSender::init(), " + ec.message());
+}
+void osuCrypto::NcoOtExtSender::check(Channel& chl, block seed)
+{
+    CoprotoSock s(chl);
+    auto ec = check(seed).evaluate(s);
+    if (ec)
+        throw std::runtime_error("NcoOtExtSender::check(), " + ec.message());
+}
+void osuCrypto::NcoOtExtSender::sendChosen(MatrixView<block> messages, PRNG& prng, Channel& chl)
+{
+
+    auto ec = evaluate(sendChosen(messages, prng), chl);
+    if (ec)
+        throw std::runtime_error("NcoOtExtSender::sendChosen(), " + ec.message());
+}
+
+void osuCrypto::NcoOtExtReceiver::check(Channel& chl, block seed)
+{
+    auto ec = evaluate(check(seed), chl);
+    if (ec)
+        throw std::runtime_error("NcoOtExtReceiver::check(), " + ec.message());
+}
+void osuCrypto::NcoOtExtReceiver::receiveChosen(
+    u64 numMsgsPerOT,
+    span<block> messages,
+    span<u64> choices, PRNG& prng, Channel& chl)
+{
+    auto ec = evaluate(receiveChosen(numMsgsPerOT, messages, choices, prng), chl);
+    if (ec)
+        throw std::runtime_error("NcoOtExtReceiver::receiveChosen(), " + ec.message());
+}
+#endif
 
 coproto::Proto osuCrypto::NcoOtExtSender::setBaseOts(span<block> baseRecvOts, const BitVector& choices)
 {
@@ -146,23 +194,6 @@ coproto::Proto osuCrypto::NcoOtExtReceiver::setBaseOts(span<std::array<block, 2>
     };
 
     return coproto::makeProto<Proto>(*this, baseSendOts, prng);
-}
-
-
-void osuCrypto::NcoOtExtSender::setBaseOts(span<block> baseRecvOts, const BitVector& choices, Channel& chl)
-{
-    CoprotoSock s(chl);
-    auto ec = setBaseOts(baseRecvOts, choices).evaluate(s);
-    if (ec)
-        throw std::runtime_error("NcoOtExtSender::setBaseOts(), " + ec.message());
-}
-
-void osuCrypto::NcoOtExtSender::init(u64 numOtExt, PRNG& prng, Channel& chl)
-{
-    CoprotoSock s(chl);
-    auto ec = init(numOtExt, prng).evaluate(s);
-    if (ec)
-        throw std::runtime_error("NcoOtExtSender::init(), " + ec.message());
 }
 
 
@@ -287,14 +318,6 @@ coproto::Proto osuCrypto::NcoOtExtSender::genBaseOts(PRNG& prng)
 }
 
 
-void osuCrypto::NcoOtExtSender::check(Channel& chl, block seed)
-{
-    CoprotoSock s(chl);
-    auto ec = check(seed).evaluate(s);
-    if (ec)
-        throw std::runtime_error("NcoOtExtSender::check(), " + ec.message());
-}
-
 coproto::Proto osuCrypto::NcoOtExtSender::sendChosen(MatrixView<block> messages, PRNG& prng)
 {
 
@@ -354,20 +377,6 @@ coproto::Proto osuCrypto::NcoOtExtSender::sendChosen(MatrixView<block> messages,
     return coproto::makeProto<Proto>(*this, messages, prng);
 }
 
-void osuCrypto::NcoOtExtSender::sendChosen(MatrixView<block> messages, PRNG & prng, Channel & chl)
-{
-
-    auto ec = evaluate(sendChosen(messages, prng), chl);
-    if (ec)
-        throw std::runtime_error("NcoOtExtSender::sendChosen(), " + ec.message());
-}
-
-void osuCrypto::NcoOtExtReceiver::check(Channel& chl, block seed)
-{
-    auto ec = evaluate(check(seed),chl);
-    if (ec)
-        throw std::runtime_error("NcoOtExtReceiver::check(), " + ec.message());
-}
 
 coproto::Proto osuCrypto::NcoOtExtReceiver::receiveChosen(u64 numMsgsPerOT, span<block> messages, span<u64> choices, PRNG& prng)
 {
@@ -433,12 +442,3 @@ coproto::Proto osuCrypto::NcoOtExtReceiver::receiveChosen(u64 numMsgsPerOT, span
     return coproto::makeProto<Proto>(*this, numMsgsPerOT, messages, choices, prng);
 }
 
-void osuCrypto::NcoOtExtReceiver::receiveChosen(
-    u64 numMsgsPerOT, 
-    span<block> messages, 
-    span<u64> choices, PRNG & prng, Channel & chl)
-{
-    auto ec = evaluate(receiveChosen(numMsgsPerOT, messages, choices, prng), chl);
-    if (ec)
-        throw std::runtime_error("NcoOtExtReceiver::receiveChosen(), " + ec.message());
-}

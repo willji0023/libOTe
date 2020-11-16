@@ -422,6 +422,7 @@ namespace osuCrypto
         //return coproto::Proto();
     }
 
+#ifdef ENABLE_BOOST
     void OosNcoOtReceiver::sendCorrection(Channel& chl, u64 sendCount)
     {
 
@@ -440,6 +441,7 @@ namespace osuCrypto
         mPendingSendFuture = chl.asyncSendFuture((u8*)dest, mT1.stride() * sendCount * sizeof(block));
         mCorrectionIdx += sendCount;
     }
+#endif
 
     coproto::Proto OosNcoOtReceiver::check(block wordSeed)
     {

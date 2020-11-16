@@ -477,7 +477,7 @@ namespace osuCrypto
                 CP_SEND(std::move(correlationData));
 
                 ot.setTimePoint("Kos.recv.done");
-
+                 
                 static_assert(gOtExtBaseOtCount == 128, "expecting 128");
 
                 CP_END();

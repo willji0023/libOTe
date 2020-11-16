@@ -42,8 +42,10 @@ namespace osuCrypto
         Matrix<block> mT1;
         Matrix<block> mW;
 
+#ifdef ENABLE_BOOST
         bool mHasPendingSendFuture = false;
         std::future<void> mPendingSendFuture;
+#endif
 
 #ifndef NDEBUG
         std::vector<u8> mEncodeFlags;
@@ -57,8 +59,10 @@ namespace osuCrypto
 
         ~OosNcoOtReceiver()
         {
+#ifdef ENABLE_BOOST
             if (mHasPendingSendFuture)
                 mPendingSendFuture.get();
+#endif
         }
 
         void operator=(OosNcoOtReceiver&& v) {
@@ -71,9 +75,11 @@ namespace osuCrypto
             mT0 = std::move(v.mT0);
             mT1 = std::move(v.mT1);
             mW = std::move(v.mW);
+#ifdef ENABLE_BOOST
             mHasPendingSendFuture = v.mHasPendingSendFuture;
             mPendingSendFuture = std::move(v.mPendingSendFuture);
             v.mHasPendingSendFuture = false;
+#endif
             v.mHasBase = false;
 #ifndef NDEBUG
             mEncodeFlags = std::move(mEncodeFlags);
@@ -151,7 +157,10 @@ namespace osuCrypto
         // @ chl: the channel that the data will be sent over
         // @ sendCount: the number of correction values that should be sent.
         coproto::Proto sendCorrection(u64 sendCount) override final;
+
+#ifdef ENABLE_BOOST
         void sendCorrection(Channel& chl, u64 sendCount) override final;
+#endif
 
         // Some malicious secure OT extensions require an additional step after all corrections have 
         // been sent. In this case, this method should be called.

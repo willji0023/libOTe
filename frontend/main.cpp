@@ -49,6 +49,31 @@ int miraclTestMain();
 #include "libOTe/Base/MasnyRindalKyber.h"
 #include "libOTe/Base/naor-pinkas.h"
 
+#include "coproto/LocalEvaluator.h"
+
+
+using LocalSocket = coproto::LocalEvaluator::BlockingSock;
+coproto::LocalEvaluator _eval;
+std::array<std::list<LocalSocket>, 2> sockets;
+std::mutex mutex;
+LocalSocket getLocalSocket(Role role)
+{
+	std::lock_guard<std::mutex> lock(mutex);
+	auto bit = int(role) & 1;
+
+	if (sockets[bit].size())
+	{
+		auto c = std::move(sockets[bit].front());
+		sockets[bit].pop_front();
+		return std::move(c);
+	}
+	else
+	{
+		auto pair = _eval.getSocketPair();
+		sockets[1 ^ bit].emplace_back(std::move(pair[1 ^ bit]));
+		return std::move(pair[bit]);
+	}
+}
 
 
 template<typename NcoOtSender, typename  NcoOtReceiver>
@@ -62,17 +87,27 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 	bool randomOT = true;
 	auto numOTs = totalOTs / numThreads;
 	auto numChosenMsgs = 256;
+	PRNG prng(sysRandomSeed());
 
-	// get up the networking
+
+#ifdef ENABLE_BOOST
+	// set up the boost based networking. See cryptoTools/frontent/tutorial for help.
 	auto rr = role == Role::Sender ? SessionMode::Server : SessionMode::Client;
 	IOService ios;
 	Session  ep0(ios, ip, rr);
-	PRNG prng(sysRandomSeed());
 
 	// for each thread we need to construct a channel (socket) for it to communicate on.
 	std::vector<Channel> chls(numThreads);
 	for (int i = 0; i < numThreads; ++i)
 		chls[i] = ep0.addChannel();
+#else
+
+	// set up networking using the "local" socket provided by coproto.
+	std::vector<LocalSocket> chls(numThreads);
+	for (int i = 0; i < numThreads; ++i)
+		chls[i] = getLocalSocket(role);
+#endif
+
 
 	std::vector<NcoOtReceiver> recvers(numThreads);
 	std::vector<NcoOtSender> senders(numThreads);
@@ -89,9 +124,9 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 	// the default BaseOT protocol. You can also manually set the
 	// base OTs with setBaseOts(...);
 	if (role == Role::Sender)
-		senders[0].genBaseOts(prng, chls[0]);
+		senders[0].genBaseOts(prng).evaluate(chls[0]);
 	else
-		recvers[0].genBaseOts(prng, chls[0]);
+		recvers[0].genBaseOts(prng).evaluate(chls[0]);
 
 	// now that we have one valid pair of extenders, we can call split on 
 	// them to get more copies which can be used concurrently.
@@ -112,7 +147,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 			// once configure(...) and setBaseOts(...) are called,
 			// we can compute many batches of OTs. First we need to tell
 			// the instance how mant OTs we want in this batch. This is done here.
-			recvers[k].init(numOTs, prng, chl);
+			recvers[k].init(numOTs, prng).evaluate(chl);
 
 			// now we can iterate over the OTs and actaully retreive the desired 
 			// messages. However, for efficieny we will do this in steps where
@@ -153,13 +188,13 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 				// allows the sender to also compute the OT messages. Since we just
 				// encoded "min" OT messages, we will tell the class to send the 
 				// next min "correction" values. 
-				recvers[k].sendCorrection(chl, min);
+				recvers[k].sendCorrection(min).evaluate(chl);
 			}
 
 			// once all numOTs have been encoded and had their correction values sent
 			// we must call check. This allows to sender to make sure we did not cheat.
 			// For semi-honest protocols, this can and will be skipped. 
-			recvers[k].check(chl, ZeroBlock);
+			recvers[k].check(sysRandomSeed()).evaluate(chl);
 
 		}
 		else
@@ -172,7 +207,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 				choices[i] = prng.get<u8>();
 
 			// the messages that were learned are written to recvMsgs.
-			recvers[k].receiveChosen(numChosenMsgs, recvMsgs, choices, prng, chl);
+			recvers[k].receiveChosen(numChosenMsgs, recvMsgs, choices, prng).evaluate(chl);
 		}
 	};
 
@@ -186,7 +221,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 		{
 
 			// Same explanation as above.
-			senders[k].init(numOTs, prng, chl);
+			senders[k].init(numOTs, prng).evaluate(chl);
 
 			// Same explanation as above.
 			for (int i = 0; i < numOTs; )
@@ -201,7 +236,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 				// Note that the step size must match what the receiver used.
 				// If this is unknown you can use recvCorrection(chl) -> u64
 				// which will tell you how many were sent. 
-				senders[k].recvCorrection(chl, min);
+				senders[k].recvCorrection(min).evaluate(chl);
 
 				// we now encode any OT message with index less that i + min.
 				for (u64 j = 0; j < min; ++j, ++i)
@@ -228,7 +263,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 
 			// This call is required to make sure the receiver did not cheat. 
 			// All corrections must be recieved before this is called. 
-			senders[k].check(chl, ZeroBlock);
+			senders[k].check(sysRandomSeed()).evaluate(chl);
 		}
 		else
 		{
@@ -237,7 +272,7 @@ void NChooseOne_example(Role role, int totalOTs, int numThreads, std::string ip,
 			prng.get(sendMessages.data(), sendMessages.size());
 
 			// perform the OTs with the given messages.
-			senders[k].sendChosen(sendMessages, prng, chl);
+			senders[k].sendChosen(sendMessages, prng).evaluate(chl);
 		}
 	};
 
@@ -276,19 +311,26 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 		totalOTs = 1 << 20;
 
 	bool randomOT = true;
-
 	auto numOTs = totalOTs / numThreads;
+	PRNG prng(sysRandomSeed());
 
-	// get up the networking
+#ifdef ENABLE_BOOST
+	// set up the boost based networking. See cryptoTools/frontent/tutorial for help.
 	auto rr = role == Role::Sender ? SessionMode::Server : SessionMode::Client;
 	IOService ios;
 	Session  ep0(ios, ip, rr);
-	PRNG prng(sysRandomSeed());
 
 	// for each thread we need to construct a channel (socket) for it to communicate on.
 	std::vector<Channel> chls(numThreads);
 	for (int i = 0; i < numThreads; ++i)
 		chls[i] = ep0.addChannel();
+#else
+
+	// set up networking using the "local" socket provided by coproto.
+	std::vector<LocalSocket> chls(numThreads);
+	for (int i = 0; i < numThreads; ++i)
+		chls[i] = getLocalSocket(role);
+#endif
 
 	Timer timer, sendTimer, recvTimer;
 	timer.reset();
@@ -306,22 +348,23 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 	// here just showing the example. 
 	if (role == Role::Receiver)
 	{
-        DefaultBaseOT base;
-		std::array<std::array<block, 2>, 128> baseMsg;
-		base.send(baseMsg, prng, chls[0], numThreads);
-		receivers[0].setBaseOts(baseMsg, prng, chls[0]);
-		
-		//receivers[0].genBaseOts(prng, chls[0]);
+		// libOTe is lazy in that when you create a protocol,
+		// it does not actually start executing it.
+		coproto::Proto proto = receivers[0].genBaseOts(prng);
+
+		// to actually perform the base OTs, evaluate and pass 
+		// in the socket.
+		coproto::error_code ec = proto.evaluate(chls[0]);
+
+		// check for an error.
+		if (ec)
+			std::cout << ec.message() << std::endl;
 	}
 	else
 	{
-
-        DefaultBaseOT base;
-		BitVector bv(128);
-		std::array<block, 128> baseMsg;
-		bv.randomize(prng);
-		base.receive(bv, baseMsg, prng, chls[0], numThreads);
-		senders[0].setBaseOts(baseMsg, bv,chls[0]);
+		auto ec = senders[0].genBaseOts(prng).evaluate(chls[0]);
+		if (ec)
+			std::cout << ec.message() << std::endl;
 	}
 #else
 	std::cout << "warning, base ots are not enabled. Fake base OTs will be used. " << std::endl;
@@ -330,7 +373,7 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 	commonPRNG.get(sendMsgs.data(), sendMsgs.size());
 	if (role == Role::Receiver)
 	{
-		receivers[0].setBaseOts(sendMsgs, prng, chls[0]);
+		receivers[0].setBaseOts(sendMsgs, prng).evaluate(chls[0]);
 	}
 	else
 	{
@@ -340,7 +383,7 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 		for (u64 i = 0; i < 128; ++i)
 			recvMsgs[i] = sendMsgs[i][bv[i]];
 
-		senders[0].setBaseOts(recvMsgs, bv, chls[0]);
+		senders[0].setBaseOts(recvMsgs, bv).evaluate(chls[0]);
 	}
 #endif 
 
@@ -369,17 +412,21 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 
 			// construct a vector to stored the received messages. 
 			std::vector<block> msgs(numOTs);
+			coproto::error_code ec;
 
 			if (randomOT)
 			{
 				// perform  numOTs random OTs, the results will be written to msgs.
-				receivers[i].receive(choice, msgs, prng, chls[i]);
+				ec = receivers[i].receive(choice, msgs, prng).evaluate(chls[i]);
 			}
 			else
 			{
 				// perform  numOTs chosen message OTs, the results will be written to msgs.
-				receivers[i].receiveChosen(choice, msgs, prng, chls[i]);
+				ec = receivers[i].receiveChosen(choice, msgs, prng).evaluate(chls[i]);
 			}
+			if (ec)
+				std::cout << ec.message() << std::endl;
+
 		}
 		else
 		{
@@ -393,10 +440,11 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 			//     senders[i].setDelta(some 128 bit delta);
 			//
 
+			coproto::error_code ec;
 			if (randomOT)
 			{
 				// perform the OTs and write the random OTs to msgs.
-				senders[i].send(msgs, prng, chls[i]);
+				ec = senders[i].send(msgs, prng).evaluate(chls[i]);
 			}
 			else
 			{
@@ -405,8 +453,10 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 
 				// perform the OTs. The receiver will learn one
 				// of the messages stored in msgs.
-				senders[i].sendChosen(msgs, prng, chls[i]);
+				ec = senders[i].sendChosen(msgs, prng).evaluate(chls[i]);
 			}
+			if (ec)
+				std::cout << ec.message() << std::endl;
 		}
 	};
 
@@ -423,10 +473,10 @@ void TwoChooseOne_example(Role role, int totalOTs, int numThreads, std::string i
 	auto e = timer.setTimePoint("finish");
 	auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
 
-	auto com = (chls[0].getTotalDataRecv() + chls[0].getTotalDataSent()) * numThreads;
+	//auto com = (chls[0].getTotalDataRecv() + chls[0].getTotalDataSent()) * numThreads;
 
 	if (role == Role::Sender)
-		lout << tag << " n=" << Color::Green << totalOTs << " " << milli << " ms  " << com << " bytes" << std::endl << Color::Default;
+		lout << tag << " n=" << Color::Green << totalOTs << " " << milli << " ms  " /*<< com << " bytes" */<< std::endl << Color::Default;
 
 
 	if (cmd.isSet("v"))
@@ -595,7 +645,6 @@ void TwoChooseOneG_example(Role role, int numOTs, int numThreads, std::string ip
 template<typename BaseOT>
 void baseOT_example(Role role, int totalOTs, int numThreads, std::string ip, std::string tag, CLP&)
 {
-	IOService ios;
 	PRNG prng(sysRandomSeed());
 
 	if (totalOTs == 0)
@@ -606,7 +655,7 @@ void baseOT_example(Role role, int totalOTs, int numThreads, std::string ip, std
 
 	if (role == Role::Receiver)
 	{
-		auto chl0 = Session(ios, ip, SessionMode::Server).addChannel();
+		auto chl0 = getLocalSocket(role);
 		BaseOT recv;
 
 		std::vector<block> msg(totalOTs);
@@ -617,7 +666,7 @@ void baseOT_example(Role role, int totalOTs, int numThreads, std::string ip, std
 		Timer t;
 		auto s = t.setTimePoint("base OT start");
 
-		recv.receive(choice, msg, prng, chl0);
+		recv.receive(choice, msg, prng).evaluate(chl0);
 
 		auto e = t.setTimePoint("base OT end");
 		auto milli = std::chrono::duration_cast<std::chrono::milliseconds>(e - s).count();
@@ -626,14 +675,13 @@ void baseOT_example(Role role, int totalOTs, int numThreads, std::string ip, std
 	}
 	else
 	{
-
-		auto chl1 = Session(ios, ip, SessionMode::Client).addChannel();
+		auto chl1 = getLocalSocket(role);
 
 		BaseOT send;
 
 		std::vector<std::array<block, 2>> msg(totalOTs);
 
-		send.send(msg, prng, chl1);
+		send.send(msg, prng).evaluate(chl1);
 	}
 }
 
@@ -697,10 +745,9 @@ bool runIf(ProtocolFunc protocol, CLP & cmd, std::vector<std::string> tag)
 #ifdef ENABLE_IKNP
 void minimal()
 {
-	// Setup networking. See cryptoTools\frontend_cryptoTools\Tutorials\Network.cpp
-	IOService ios;
-	Channel senderChl = Session(ios, "localhost:1212", SessionMode::Server).addChannel();
-	Channel recverChl = Session(ios, "localhost:1212", SessionMode::Client).addChannel();
+
+	coproto::LocalEvaluator eval;
+	auto socket = eval.getSocketPair();
 
 	// The number of OTs.
 	int n = 100;
@@ -717,7 +764,7 @@ void minimal()
 
 		// Receive the messages
 		std::vector<block> messages(n);
-		recver.receiveChosen(choices, messages, prng, recverChl);
+		recver.receiveChosen(choices, messages, prng).evaluate(socket[0]);
 
 		// messages[i] = sendMessages[i][choices[i]];
 		});
@@ -731,7 +778,7 @@ void minimal()
 	//...
 
 	// Send the messages.
-	sender.sendChosen(sendMessages, prng, senderChl);
+	sender.sendChosen(sendMessages, prng).evaluate(socket[1]);
 	recverThread.join();
 }
 #endif
@@ -810,11 +857,13 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+#ifdef ENABLE_BOOST
 	if (cmd.isSet("latency"))
 	{
 		getLatency(cmd);
 		flagSet = true;
 	}
+#endif
 
 #ifdef ENABLE_SIMPLESTOT
 	flagSet |= runIf(baseOT_example<SimplestOT>, cmd, simple);

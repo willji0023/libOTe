@@ -298,6 +298,7 @@ namespace osuCrypto
             throw std::runtime_error("must call configure(...) before getBaseOTCount() " LOCATION);
     }
 
+#ifdef ENABLE_BOOST
     void KkrtNcoOtSender::recvCorrection(Channel& chl, u64 recvCount)
     {
 
@@ -315,7 +316,7 @@ namespace osuCrypto
         // update the index of there we should store the next set of correction values.
         mCorrectionIdx += recvCount;
     }
-
+#endif
 
     coproto::Proto KkrtNcoOtSender::recvCorrection(u64 recvCount)
     {
@@ -337,6 +338,7 @@ namespace osuCrypto
     }
 
 
+#ifdef ENABLE_BOOST
     u64 KkrtNcoOtSender::recvCorrection(Channel& chl)
     {
 
@@ -360,6 +362,7 @@ namespace osuCrypto
 
         return numCorrections;
     }
+#endif
 
 
 

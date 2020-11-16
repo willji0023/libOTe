@@ -126,11 +126,14 @@ namespace osuCrypto {
         // @ recvCount: the number of correction values that should be received.
         coproto::Proto recvCorrection(u64 recvCount) override final;
 
+#ifdef ENABLE_BOOST
         void recvCorrection(Channel& chl, u64 recvCount) override final;
         
         // An alternative version of the recvCorrection(...) function which dynamically receivers the number of 
         // corrections based on how many were sent. The return value is the number received. See overload for details.
         u64 recvCorrection(Channel& chl) override final;
+#endif
+
 
         coproto::Proto check(block seed) override final { return {}; }
 

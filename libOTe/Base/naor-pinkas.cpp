@@ -344,6 +344,7 @@ namespace osuCrypto
         return coproto::makeProto<NPProto>(messages, prng);
     }
 
+#ifdef ENABLE_BOOST
 
     void NaorPinkas::receive(
         const BitVector& choices,
@@ -353,16 +354,21 @@ namespace osuCrypto
         u64 numThreads)
     {
         CoprotoSock s(socket);
-        receive(choices, messages, prng).evaluate(s);
+        auto ec = receive(choices, messages, prng).evaluate(s);
+        if (ec)
+            throw std::runtime_error(ec.message());
     }
     void NaorPinkas::send(span<std::array<block, 2>> messages, PRNG& prng, Channel& sock, u64 numThreads)
     {
 
         CoprotoSock s(sock);
-        send(messages, prng).evaluate(s);
+        auto ec = send(messages, prng).evaluate(s);
+        if (ec)
+            throw std::runtime_error(ec.message());
     }
 
 
+#endif
 
     //void NaorPinkas::receive(
     //    const BitVector& choices,

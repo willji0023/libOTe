@@ -333,6 +333,7 @@ namespace osuCrypto
         return coproto::send(data);
     }
 
+#ifdef ENABLE_BOOST
     void KkrtNcoOtReceiver::sendCorrection(Channel & chl, u64 sendCount)
     {
 #ifndef NDEBUG
@@ -341,15 +342,12 @@ namespace osuCrypto
             if (neq(mT0[i][0], AllOneBlock))
                 throw std::runtime_error("This send request contains uninitialized OT. Call encode first...");
 #endif
-
         mHasPendingSendFuture = true;
         span<u8> data((u8*)(mT1.data() + (mCorrectionIdx * mT1.stride())), mT1.stride() * sendCount * sizeof(block));
         mCorrectionIdx += sendCount;
-
-
         mPendingSendFuture = chl.asyncSendFuture(data.data(), data.size());
-
     }
+#endif
 
 }
 #endif
