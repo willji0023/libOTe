@@ -698,6 +698,7 @@ oos{ "o", "oos" },
 Silent{ "s", "Silent" },
 akn{ "a", "akn" },
 np{ "np" },
+mr{ "mr" },
 simple{ "simplest" },
 simpleasm{ "simplest-asm" };
 
@@ -874,6 +875,9 @@ int main(int argc, char** argv)
 #ifdef ENABLE_NP
 	flagSet |= runIf(baseOT_example<NaorPinkas>, cmd, np);
 #endif
+#ifdef ENABLE_MR
+	flagSet |= runIf(baseOT_example<MasnyRindal>, cmd, mr);
+#endif
 #ifdef ENABLE_IKNP
 	flagSet |= runIf(TwoChooseOne_example<IknpOtExtSender, IknpOtExtReceiver>, cmd, iknp);
 #endif
@@ -913,7 +917,8 @@ int main(int argc, char** argv)
 			<< "Protocols:\n"
 			<< Color::Green << "  -simplest-asm" << Color::Default << "  : to run the ASM-SimplestOT active secure  1-out-of-2  base OT      "  <<Color::Red<< (spaEnabled ? "" : "(disabled)") << "\n"	  << Color::Default
 			<< Color::Green << "  -simplest    " << Color::Default << "  : to run the SimplestOT     active secure  1-out-of-2  base OT      "  <<Color::Red<< (spEnabled ? "" : "(disabled)") << "\n"	  << Color::Default
-			<< Color::Green << "  -np          " << Color::Default << "  : to run the NaorPinkas     active secure  1-out-of-2  base OT      "  <<Color::Red<< (npEnabled ? "" : "(disabled)") << "\n"	  << Color::Default
+			<< Color::Green << "  -np          " << Color::Default << "  : to run the NaorPinkas     active secure  1-out-of-2  base OT      " << Color::Red << (npEnabled ? "" : "(disabled)") << "\n" << Color::Default
+			<< Color::Green << "  -mr          " << Color::Default << "  : to run the MasnyRindal    active secure  1-out-of-2  base OT      "  <<Color::Red<< (npEnabled ? "" : "(disabled)") << "\n"	  << Color::Default
 			<< Color::Green << "  -iknp        " << Color::Default << "  : to run the IKNP           passive secure 1-out-of-2       OT      "  <<Color::Red<< (iknpEnabled ? "" : "(disabled)") << "\n"	  << Color::Default
 			<< Color::Green << "  -diknp       " << Color::Default << "  : to run the IKNP           passive secure 1-out-of-2 Delta-OT      "  <<Color::Red<< (diknpEnabled ? "" : "(disabled)") << "\n"  << Color::Default
 			<< Color::Green << "  -Silent      " << Color::Default << "  : to run the Silent         passive secure 1-out-of-2       OT      "  <<Color::Red<< (silentEnabled ? "" : "(disabled)") <<"\n"  << Color::Default
