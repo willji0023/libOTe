@@ -192,7 +192,7 @@ namespace osuCrypto
             }
             raw.setUniformBaseOts(base);
         }
-        return std::move(raw);
+        return (raw);
     }
 
     std::unique_ptr<NcoOtExtReceiver> KkrtNcoOtReceiver::split()

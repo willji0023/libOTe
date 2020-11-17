@@ -56,8 +56,8 @@ namespace osuCrypto
         {
 #ifdef ENABLE_BOOST
             if (mHasPendingSendFuture)
-                mPendingSendFuture.get()
-#endif;
+                mPendingSendFuture.get();
+#endif
         }
 
 

@@ -20,6 +20,7 @@
 #include <cryptoTools/Common/TestCollection.h>
 #include <cryptoTools/Common/BitVector.h>
 #include "coproto/LocalEvaluator.h"
+#include "BaseOT_Tests.h"
 
 #ifdef GetMessage
 #undef GetMessage
@@ -108,6 +109,44 @@ namespace tests_libOTe
 #endif
     }
 
+    void Bot_AsmSimplest_Test()
+    {
+
+#ifdef ENABLE_SIMPLESTOT_ASM
+        setThreadName("Sender");
+
+        PRNG prng0(block(4253465, 3434565));
+        PRNG prng1(block(42532335, 334565));
+
+        u64 numOTs = 50;
+        std::vector<block> recvMsg(numOTs);
+        std::vector<std::array<block, 2>> sendMsg(numOTs);
+        BitVector choices(numOTs);
+        choices.randomize(prng0);
+
+        AsmSimplestOT baseOTs0;
+        auto p0 = baseOTs0.send(sendMsg, prng1);
+
+
+        AsmSimplestOT  baseOTs1;
+        auto p1 = baseOTs1.receive(choices, recvMsg, prng0);
+        coproto::LocalEvaluator eval;
+        eval.execute(p0, p1);
+
+        for (u64 i = 0; i < numOTs; ++i)
+        {
+            if (neq(recvMsg[i], sendMsg[i][choices[i]]))
+            {
+                std::cout << "failed " << i << " exp = m[" << int(choices[i]) << "], act = " << recvMsg[i] << " true = " << sendMsg[i][0] << ", " << sendMsg[i][1] << std::endl;
+                throw UnitTestFail();
+            }
+        }
+
+#else
+        throw UnitTestSkipped("Simplest OT not enabled. Requires Relic or the simplest OT ASM library");
+#endif
+    }
+
 
 
 
@@ -153,11 +192,11 @@ namespace tests_libOTe
 #ifdef ENABLE_MR_KYBER
         setThreadName("Sender");
 
-        IOService ios(0);
-        Session ep0(ios, "127.0.0.1", 1212, SessionMode::Server);
-        Session ep1(ios, "127.0.0.1", 1212, SessionMode::Client);
-        Channel senderChannel = ep1.addChannel();
-        Channel recvChannel = ep0.addChannel();
+        //IOService ios(0);
+        //Session ep0(ios, "127.0.0.1", 1212, SessionMode::Server);
+        //Session ep1(ios, "127.0.0.1", 1212, SessionMode::Client);
+        //Channel senderChannel = ep1.addChannel();
+        //Channel recvChannel = ep0.addChannel();
 
         PRNG prng0(block(4253465, 3434565));
         PRNG prng1(block(4253233465, 334565));
@@ -169,17 +208,14 @@ namespace tests_libOTe
         choices.randomize(prng0);
 
 
-        std::thread thrd = std::thread([&]() {
-            setThreadName("receiver");
-            MasnyRindalKyber baseOTs;
-            baseOTs.send(sendMsg, prng1, recvChannel);
-
-            });
+            MasnyRindalKyber baseOTs0;
+            auto p0 = baseOTs0.send(sendMsg, prng1);
 
         MasnyRindalKyber baseOTs;
-        baseOTs.receive(choices, recvMsg, prng0, senderChannel);
+        auto p1 = baseOTs.receive(choices, recvMsg, prng0);
 
-        thrd.join();
+        coproto::LocalEvaluator eval;
+        eval.execute(p0, p1);
 
         for (u64 i = 0; i < numOTs; ++i)
         {

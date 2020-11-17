@@ -80,6 +80,17 @@ namespace osuCrypto
         // If unsure leave as true as the strings will be uniform (safest but slower).
         bool mUniformOTs = true;
 
+
+        coproto::Proto receive(
+            const BitVector& choices,
+            span<block> messages,
+            PRNG& prng) override;
+
+        coproto::Proto send(
+            span<std::array<block, 2>> messages,
+            PRNG& prng) override;
+
+#ifdef ENABLE_BOOST
         void receive(
             const BitVector& choices,
             span<block> messages,
@@ -98,17 +109,7 @@ namespace osuCrypto
         {
             send(messages, prng, chl);
         }
-
-        void receive(
-            const BitVector& choices,
-            span<block> messages,
-            PRNG& prng,
-            Channel& chl) override;
-
-        void send(
-            span<std::array<block, 2>> messages,
-            PRNG& prng,
-            Channel& chl) override;
+#endif
     };
 
 #endif

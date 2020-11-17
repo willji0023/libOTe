@@ -11,16 +11,6 @@
 namespace osuCrypto
 {
 
-    void MasnyRindalKyber::receive(
-        const BitVector & choices, 
-        span<block> messages, 
-        PRNG & prng, 
-        Channel & chl)
-    {
-        CoprotoSock s(chl);
-        receive(choices, messages, prng).evaluate(s);
-    }
-
     coproto::Proto MasnyRindalKyber::receive(const BitVector& choices, span<block> messages, PRNG& prng)
     {
         struct MPProto : public coproto::NativeProto
@@ -82,14 +72,7 @@ namespace osuCrypto
         return coproto::makeProto<MPProto>(choices, messages, prng);
     }
 
-    void MasnyRindalKyber::send(
-        span<std::array<block, 2>> messages, 
-        PRNG & prng, 
-        Channel & chl)
-    {
-        CoprotoSock s(chl);
-        send(messages, prng).evaluate(s);
-    }
+
     coproto::Proto MasnyRindalKyber::send(span<std::array<block, 2>> messages, PRNG& prng)
     {
         struct MPProto : public coproto::NativeProto

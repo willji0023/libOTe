@@ -240,67 +240,120 @@ namespace osuCrypto
         return rand;
     }
 
-    void AsmSimplestOT::receive(
+    coproto::Proto AsmSimplestOT::receive(
         const BitVector& choices,
         span<block> msg,
-        PRNG& prng,
-        Channel& chl)
+        PRNG& prng)
     {
-        RECEIVER receiver;
 
-        u8 Rs_pack[4 * SIMPLEST_OT_PACK_BYTES];
-        u8 keys[4][SIMPLEST_OT_HASHBYTES];
-        u8 cs[4];
-
-        chl.recv(receiver.S_pack, sizeof(receiver.S_pack));
-        receiver_procS(&receiver);
-
-        receiver_maketable(&receiver);
-        auto rand = makeRandSource(prng);
-
-        for (u32 i = 0; i < msg.size(); i += 4)
+        struct RProto : public coproto::NativeProto
         {
-            auto min = std::min<u32>(4, msg.size() - i);
+            bool mUniformOTs;
+            const BitVector& choices;
+            span<block> msg;
+            PRNG& prng;
+            RProto(bool& u, const BitVector& c, span<block> m, PRNG& p)
+                : mUniformOTs(u)
+                , choices(c)
+                , msg(m)
+                , prng(p)
+            {}
 
-            for (u32 j = 0; j < min; j++)
-                cs[j] = choices[i + j];
-            
-            receiver_rsgen(&receiver, Rs_pack, cs, rand);
-            chl.asyncSendCopy(Rs_pack, sizeof(Rs_pack));
-            receiver_keygen(&receiver, keys);
+            RECEIVER receiver;
 
-            for (u32 j = 0; j < min; j++)
-                memcpy(&msg[i + j], keys[j], sizeof(block));
-        }
+            u8 Rs_pack[4 * SIMPLEST_OT_PACK_BYTES];
+            u8 keys[4][SIMPLEST_OT_HASHBYTES];
+            u8 cs[4];
+            rand_source rand;
+            u32 min, i;
+            coproto::error_code resume() override
+            {
+                CP_BEGIN();
+
+                //chl.recv(receiver.S_pack, sizeof(receiver.S_pack));
+                CP_RECV(receiver.S_pack);
+                receiver_procS(&receiver);
+
+                receiver_maketable(&receiver);
+                rand = makeRandSource(prng);
+
+                for (i = 0; i < msg.size(); i += 4)
+                {
+                    min = std::min<u32>(4, msg.size() - i);
+
+                    for (u32 j = 0; j < min; j++)
+                        cs[j] = choices[i + j];
+
+                    receiver_rsgen(&receiver, Rs_pack, cs, rand);
+
+                    CP_SEND(Rs_pack);
+                    //chl.asyncSendCopy(Rs_pack, sizeof(Rs_pack));
+                    receiver_keygen(&receiver, keys);
+
+                    for (u32 j = 0; j < min; j++)
+                        memcpy(&msg[i + j], keys[j], sizeof(block));
+                }
+
+                CP_END();
+                return {};
+            }
+        };
+
+        return coproto::makeProto<RProto>(mUniformOTs, choices, msg, prng);
+
     }
 
-    void AsmSimplestOT::send(
+    coproto::Proto AsmSimplestOT::send(
         span<std::array<block, 2>> msg,
-        PRNG& prng,
-        Channel& chl)
+        PRNG& prng)
     {
-        SENDER sender;
-
-        u8 S_pack[SIMPLEST_OT_PACK_BYTES];
-        u8 Rs_pack[4 * SIMPLEST_OT_PACK_BYTES];
-        u8 keys[2][4][SIMPLEST_OT_HASHBYTES];
-
-        auto rand = makeRandSource(prng);
-        sender_genS(&sender, S_pack, rand);
-        chl.asyncSend(S_pack, sizeof(S_pack));
-
-        for (u32 i = 0; i < msg.size(); i += 4)
+        struct RProto : public coproto::NativeProto
         {
-            chl.recv(Rs_pack, sizeof(Rs_pack));
-            sender_keygen(&sender, Rs_pack, keys);
+            bool mUniformOTs;
+            span<std::array<block, 2>> msg;
+            PRNG& prng;
+            RProto(bool& u, span<std::array<block, 2>>m, PRNG& p)
+                : mUniformOTs(u)
+                , msg(m)
+                , prng(p)
+            {}
 
-            auto min = std::min<u32>(4, msg.size() - i);
-            for (u32 j = 0; j < min; j++)
+            SENDER sender;
+
+            u8 S_pack[SIMPLEST_OT_PACK_BYTES];
+            u8 Rs_pack[4 * SIMPLEST_OT_PACK_BYTES];
+            u8 keys[2][4][SIMPLEST_OT_HASHBYTES];
+
+            rand_source rand;
+            u32 i;
+            coproto::error_code resume() override
             {
-                memcpy(&msg[i + j][0], keys[0][j], sizeof(block));
-                memcpy(&msg[i + j][1], keys[1][j], sizeof(block));
+                CP_BEGIN();
+                rand = makeRandSource(prng);
+
+                sender_genS(&sender, S_pack, rand);
+                //chl.asyncSend(S_pack, sizeof(S_pack));
+                CP_SEND(S_pack);
+
+                for (i = 0; i < msg.size(); i += 4)
+                {
+                    //chl.recv(Rs_pack, sizeof(Rs_pack));
+                    CP_RECV(Rs_pack);
+                    sender_keygen(&sender, Rs_pack, keys);
+
+                    auto min = std::min<u32>(4, msg.size() - i);
+                    for (u32 j = 0; j < min; j++)
+                    {
+                        memcpy(&msg[i + j][0], keys[0][j], sizeof(block));
+                        memcpy(&msg[i + j][1], keys[1][j], sizeof(block));
+                    }
+                }
+                CP_END();
+                return {};
             }
-        }
+        };
+
+        return coproto::makeProto<RProto>(mUniformOTs, msg, prng);
     }
 }
 #endif

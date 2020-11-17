@@ -6,6 +6,7 @@ namespace tests_libOTe
 {
     void Bot_NaorPinkas_Test();
     void Bot_Simplest_Test();
+    void Bot_AsmSimplest_Test();
     void Bot_MasnyRindal_Test();
     void Bot_MasnyRindal_Kyber_Test();
 }

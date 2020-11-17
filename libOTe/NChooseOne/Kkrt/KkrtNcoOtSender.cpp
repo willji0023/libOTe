@@ -59,7 +59,7 @@ namespace osuCrypto
             }
             raw.setUniformBaseOts(base, mBaseChoiceBits);
         }
-        return std::move(raw);
+        return (raw);
     }
 
     std::unique_ptr<NcoOtExtSender> KkrtNcoOtSender::split()
