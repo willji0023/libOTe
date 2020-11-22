@@ -13,15 +13,15 @@ using namespace emp;
 using namespace std;
 namespace po = boost::program_options;
 
-// #define LIBOTE
-// #define EMPTOOLS
+#define LIBOTE
+// 	#define EMPTOOLS
 
 #ifdef LIBOTE
-void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	IOService ios;
-	Session ep(ios, "localhost", 1212, SessionMode::Server);
+	Session ep(ios, server_ip, port, SessionMode::Client);
 	Channel chl = ep.addChannel();
 	chl.waitForConnection();
 
@@ -48,17 +48,18 @@ void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_
 	ios.stop();
 }
 
-void __Client(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Client(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 	
 	IOService ios;
-	Session ep(ios, "localhost", 1212, SessionMode::Client);
+	Session ep(ios, server_ip, port, SessionMode::Server);
 	Channel chl = ep.addChannel();
 	chl.waitForConnection();
 
     vector<int64_t> data(num_elems);
 
 	auto s = time.setTimePoint("start");
+    std::cout << "original data: " << &data << std::endl;
 	chl.recv(data);
 	auto e = time.setTimePoint("finish");
 	auto milli = chrono::duration_cast<chrono::milliseconds>(e - s).count();
@@ -78,7 +79,7 @@ void __Client(int party, int port, string server_ip, uint64_t num_thrds, uint64_
 }
 #else
 #ifdef EMPTOOLS
-void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	NetIO* io = new NetIO(party==ALICE ? nullptr:server_ip.c_str(), port, true);
@@ -106,7 +107,7 @@ void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_
 	io->flush();
 }
 
-void __Client(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Client(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	NetIO* io = new NetIO(party==ALICE ? nullptr:server_ip.c_str(), port, true);
@@ -132,7 +133,7 @@ void __Client(int party, int port, string server_ip, uint64_t num_thrds, uint64_
 	io->flush();
 }
 #else
-void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	IOService ios;
@@ -166,7 +167,7 @@ void __Server(int party, int port, string server_ip, uint64_t num_thrds, uint64_
 	ios.stop();
 }
 
-void __Client(int party, int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
+void __Client(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	IOService ios;
