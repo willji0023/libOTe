@@ -14,14 +14,14 @@ using namespace std;
 namespace po = boost::program_options;
 
 #define LIBOTE
-// 	#define EMPTOOLS
+//#define EMPTOOLS
 
 #ifdef LIBOTE
 void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
 
 	IOService ios;
-	Session ep(ios, server_ip, port, SessionMode::Client);
+	Session ep(ios, server_ip, port, SessionMode::Server);
 	Channel chl = ep.addChannel();
 	chl.waitForConnection();
 
@@ -42,7 +42,6 @@ void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds
 	milli = chrono::duration_cast<chrono::milliseconds>(e - s).count();
 	cout << "Seperate: " << milli << " ms" << endl;
 
-	
 	chl.close();
 	ep.stop();
 	ios.stop();
@@ -50,16 +49,15 @@ void __Server(int party, unsigned int port, string server_ip, uint64_t num_thrds
 
 void __Client(int party, unsigned int port, string server_ip, uint64_t num_thrds, uint64_t num_elems){
 	osuCrypto::Timer time;
-	
+
 	IOService ios;
-	Session ep(ios, server_ip, port, SessionMode::Server);
+	Session ep(ios, server_ip, port, SessionMode::Client);
 	Channel chl = ep.addChannel();
 	chl.waitForConnection();
 
     vector<int64_t> data(num_elems);
 
 	auto s = time.setTimePoint("start");
-    std::cout << "original data: " << &data << std::endl;
 	chl.recv(data);
 	auto e = time.setTimePoint("finish");
 	auto milli = chrono::duration_cast<chrono::milliseconds>(e - s).count();
